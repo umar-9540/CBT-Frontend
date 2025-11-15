@@ -35,13 +35,6 @@ export interface Test {
   expireAt?: number;
 }
 
-export interface Section {
-  name: string;
-  count: number;
-  mcqType?: number | null;
-  integerType?: number | null;
-}
-
 export interface NegativeMarking {
   enabled: boolean;
   perWrong: number;
@@ -58,14 +51,43 @@ export interface TestAttempt {
 }
 
 export interface Question {
-  id: string;
-  test_id: string;
-  section: string;
-  question_number: number;
-  type: string;
+  id?: string;
+  questionId?: string;
+  testId: string;
+  section: Section; // enum
+  type: Type; // enum
   stem: string;
+  attachments?: string[];
+  options?: Option[];
+  correctAnswer: CorrectAnswer;
+  tolerance?: number;
   marks: number;
-  negative_marks: number;
+  negativeMarks?: number;
+  createdAt?: string;
+  modifiedAt?: string;
+}
+
+export enum Section {
+  PHYSICS = "PHYSICS",
+  CHEMISTRY = "CHEMISTRY",
+  MATHS = "MATHS",
+  BIOLOGY = "BIOLOGY",
+}
+
+export enum Type {
+  MCQ = "MCQ",
+  INTEGER = "INTEGER",
+}
+export interface Option {
+  optionId: string;
+  text: string;
+  image?: string;
+}
+
+export interface CorrectAnswer {
+  answer: string;
+  explanation?: string;
+  attachments?: string[];
 }
 
 export interface QuestionAttachment {
@@ -77,7 +99,7 @@ export interface QuestionAttachment {
 export interface QuestionOption {
   optionId: string;
   text: string;
-  image: string | null;
+  image?: string | null;
 }
 
 export interface StudentAnswer {
