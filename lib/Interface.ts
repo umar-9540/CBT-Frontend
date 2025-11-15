@@ -7,16 +7,44 @@ export interface Student {
 }
 
 export interface Test {
+  // API-provided identifiers
   id: string;
+  testId?: string; // e.g. "T-1002"
+
+  // Human-readable fields
+  testName?: string; // e.g. "Physics Mock Test"
+  description?: string;
+
+  // Questions / sections
+  totalQuestions?: number | string;
+  sections?: Section[];
+
+  // Scoring
+  negativeMarking?: NegativeMarking;
+  maxMarks?: number;
+  passingMarks?: number;
+
+  // Timing / behavior
+  durationInMins?: number;
+  shuffleQuestions?: boolean;
+  active?: boolean;
+
+  // Timestamps (epoch ms)
+  createdAt?: number;
+  postedAt?: number;
+  expireAt?: number;
+}
+
+export interface Section {
   name: string;
-  description: string;
-  posted_date: string;
-  start_date: string;
-  end_date: string;
-  duration_minutes: number;
-  total_marks: number;
-  is_active: boolean;
-  created_at: string;
+  count: number;
+  mcqType?: number | null;
+  integerType?: number | null;
+}
+
+export interface NegativeMarking {
+  enabled: boolean;
+  perWrong: number;
 }
 
 export interface TestAttempt {

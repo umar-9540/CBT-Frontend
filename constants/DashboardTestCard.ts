@@ -15,7 +15,7 @@ export const testsResult: Test[] = [
     created_at: "2025-11-01T10:00:00Z",
   },
   {
-    id: "test001",
+    id: "test002",
     name: "ReactJS Advanced Concepts",
     description:
       "Covers hooks, context API, state management, and performance optimization in React.",
@@ -28,7 +28,7 @@ export const testsResult: Test[] = [
     created_at: "2025-10-28T12:00:00Z",
   },
   {
-    id: "test001",
+    id: "test003",
     name: "Data Structures & Algorithms Test",
     description:
       "Evaluate your skills in arrays, linked lists, trees, graphs, and time complexity analysis.",
@@ -41,7 +41,7 @@ export const testsResult: Test[] = [
     created_at: "2025-10-15T15:00:00Z",
   },
   {
-    id: "test001",
+    id: "test004",
     name: "Node.js & Express Backend Test",
     description:
       "Test your understanding of REST APIs, middleware, authentication, and async programming.",
@@ -54,7 +54,7 @@ export const testsResult: Test[] = [
     created_at: "2025-11-03T09:00:00Z",
   },
   {
-    id: "test001",
+    id: "test005",
     name: "Database Design & SQL Test",
     description:
       "Focuses on relational schema design, normalization, joins, and query optimization.",
@@ -67,7 +67,7 @@ export const testsResult: Test[] = [
     created_at: "2025-10-25T11:00:00Z",
   },
   {
-    id: "test001",
+    id: "test006",
     name: "Frontend System Design Challenge",
     description:
       "Evaluate your ability to architect scalable UI systems and component-based designs.",

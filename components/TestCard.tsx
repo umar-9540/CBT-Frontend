@@ -10,8 +10,8 @@ interface TestCardProps {
 export default function TestCard({ test, attempt }: TestCardProps) {
   // const navigate = useNavigate();
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -20,14 +20,14 @@ export default function TestCard({ test, attempt }: TestCardProps) {
 
   const isActive = () => {
     const now = new Date();
-    const start = new Date(test.start_date);
-    const end = new Date(test.end_date);
-    return now >= start && now <= end && test.is_active;
+    const start = new Date(Number(test.postedAt));
+    const end = new Date(Number(test.expireAt));
+    return now >= start && now <= end && test.active;
   };
 
   const isPrevious = () => {
     const now = new Date();
-    const end = new Date(test.end_date);
+    const end = new Date(Number(test.expireAt));
     return now > end;
   };
 
@@ -37,7 +37,7 @@ export default function TestCard({ test, attempt }: TestCardProps) {
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
-              {test.name}
+              {test.testName}
             </h3>
             <p className="text-gray-600 text-sm leading-relaxed">
               {test.description}
@@ -55,14 +55,14 @@ export default function TestCard({ test, attempt }: TestCardProps) {
             <Calendar className="w-4 h-4 text-blue-500" />
             <div>
               <p className="text-xs text-gray-500">Posted</p>
-              <p className="font-medium">{formatDate(test.posted_date)}</p>
+              <p className="font-medium">{formatDate(new Date(Number(test.postedAt)))}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2 text-gray-600 text-sm">
             <Clock className="w-4 h-4 text-blue-500" />
             <div>
               <p className="text-xs text-gray-500">Duration</p>
-              <p className="font-medium">{test.duration_minutes} mins</p>
+              <p className="font-medium">{test.durationInMins} mins</p>
             </div>
           </div>
         </div>
@@ -75,14 +75,14 @@ export default function TestCard({ test, attempt }: TestCardProps) {
                 <div>
                   <p className="text-xs text-gray-600">Your Score</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {attempt.score}/{test.total_marks}
+                    {attempt.score}/{test.maxMarks}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-600">Attempted On</p>
                 <p className="text-sm font-semibold text-gray-900">
-                  {formatDate(attempt.attempted_date)}
+                  {formatDate(new Date(Number(test.expireAt)))}
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function TestCard({ test, attempt }: TestCardProps) {
               {isActive() ? "Active" : isPrevious() ? "Expired" : "Upcoming"}
             </span>
             <span className="text-sm text-gray-500">
-              Max: {test.total_marks} marks
+              Max: {test.maxMarks} marks
             </span>
           </div>
           {!attempt && isActive() && (

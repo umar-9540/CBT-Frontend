@@ -7,7 +7,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import TestCard from "../components/TestCard";
 import { testsResult, attemptsResult } from "../constants/DashboardTestCard";
-
+import axios from "axios";
 export default function Home() {
   // const { student } = useAuth();
   const [activeTab, setActiveTab] = useState<
@@ -49,9 +49,9 @@ export default function Home() {
     switch (activeTab) {
       case "active":
         filtered = tests.filter((test) => {
-          const start = new Date(test.start_date);
-          const end = new Date(test.end_date);
-          return now >= start && now <= end && test.is_active;
+          const start = new Date(Number(test.postedAt));
+          const end = new Date(Number(test.expireAt));
+          return now >= start && now <= end && test.active;
         });
         break;
       case "attempted": {
@@ -61,7 +61,7 @@ export default function Home() {
       }
       case "previous":
         filtered = tests.filter((test) => {
-          const end = new Date(test.end_date);
+          const end = new Date(Number(test.expireAt));
           return now > end;
         });
         break;
@@ -72,8 +72,7 @@ export default function Home() {
     if (searchQuery) {
       filtered = filtered.filter(
         (test) =>
-          test.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          test.description.toLowerCase().includes(searchQuery.toLowerCase())
+          test?.testName?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -86,8 +85,42 @@ export default function Home() {
 
   const filteredTests = getFilteredTests();
 
+  useEffect(() => {
+    const fetchTests = async () => {
+      setLoading(true);
+      // If NEXT_PUBLIC_API_URL is set it will be used (useful for production),
+      // otherwise use relative paths so Next's dev server rewrites (/api -> backend) can proxy requests and avoid CORS.
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "";
+      try {
+        const res = await axios.get(`${base}/api/v1/tests`);
+        if (res.status === 200) {
+          console.log("Fetched tests:", res.data);
+          setTests(res.data);
+        } else {
+          console.error("Unexpected status from tests API:", res.status, res.statusText);
+        }
+      } catch (err: any) {
+        // In the browser axios shows a generic "Network Error" when the request is blocked (CORS, mixed content, or network down).
+        // Log detailed info to help debugging.
+        if (err?.isAxiosError) {
+          try {
+            console.error("Axios error fetching tests:", err.message, err.toJSON ? err.toJSON() : err);
+          } catch (e) {
+            console.error("Axios error fetching tests (failed to toJSON):", err.message, err);
+          }
+        } else {
+          console.error("Unknown error fetching tests:", err);
+        }
+      } finally {
+        setLoading(false);
+        setSearchQuery("");
+      }
+    };
+
+    fetchTests();
+  }, [activeTab]);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex flex-col">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50 flex flex-col">
       <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
