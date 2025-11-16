@@ -1,7 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Question, Option, CorrectAnswer, Section, Type, Test } from "@/lib/Interface";
+import {
+  Question,
+  Option,
+  CorrectAnswer,
+  Section,
+  Type,
+  Test,
+} from "@/lib/Interface";
 import { X, Plus, Trash2 } from "lucide-react";
 
 interface QuestionFormProps {
@@ -17,6 +24,16 @@ export default function QuestionForm({
   isLoading = false,
   tests = [],
 }: QuestionFormProps) {
+  // Utility to convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+  // Extended state to track File objects for attachments and option images
   const [formData, setFormData] = useState<Omit<Question, "id" | "questionId">>(
     initialData || {
       testId: "",
@@ -35,8 +52,23 @@ export default function QuestionForm({
       },
     }
   );
+  // Store File objects for attachments
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
+  // Store File objects for correct answer attachments
+  const [correctAttachmentFiles, setCorrectAttachmentFiles] = useState<File[]>(
+    []
+  );
+  // Store File objects for option images
+  const [optionFiles, setOptionFiles] = useState<(File | null)[]>([]);
 
-  const [attachmentUrl, setAttachmentUrl] = useState("");
+  // Handle file input for question attachments (convert to base64)
+  const handleAttachmentFile = async (file: File) => {
+    const base64 = await fileToBase64(file);
+    setFormData((prev) => ({
+      ...prev,
+      attachments: [...(prev.attachments || []), base64],
+    }));
+  };
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (
@@ -48,9 +80,7 @@ export default function QuestionForm({
     setFormData((prev) => ({
       ...prev,
       [name]:
-        name === "marks" ||
-        name === "tolerance" ||
-        name === "negativeMarks"
+        name === "marks" || name === "tolerance" || name === "negativeMarks"
           ? parseFloat(value) || 0
           : value,
     }));
@@ -70,25 +100,26 @@ export default function QuestionForm({
     }));
   };
 
-  const [correctAttachmentUrl, setCorrectAttachmentUrl] = useState("");
-  const handleAddCorrectAttachment = () => {
-    if (correctAttachmentUrl.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        correctAnswer: {
-          ...prev.correctAnswer,
-          attachments: [...(prev.correctAnswer.attachments || []), correctAttachmentUrl],
-        },
-      }));
-      setCorrectAttachmentUrl("");
-    }
+  // Handle file input for correct answer attachments (convert to base64)
+  const handleCorrectAttachmentFile = async (file: File) => {
+    const base64 = await fileToBase64(file);
+    setFormData((prev) => ({
+      ...prev,
+      correctAnswer: {
+        ...prev.correctAnswer,
+        attachments: [...(prev.correctAnswer.attachments || []), base64],
+      },
+    }));
   };
+  // Removed handleAddCorrectAttachment, file input is handled directly
   const handleRemoveCorrectAttachment = (index: number) => {
     setFormData((prev) => ({
       ...prev,
       correctAnswer: {
         ...prev.correctAnswer,
-        attachments: (prev.correctAnswer.attachments || []).filter((_, i) => i !== index),
+        attachments: (prev.correctAnswer.attachments || []).filter(
+          (_, i) => i !== index
+        ),
       },
     }));
   };
@@ -105,6 +136,7 @@ export default function QuestionForm({
         },
       ],
     }));
+    setOptionFiles((prev) => [...prev, null]);
   };
 
   const handleRemoveOption = (index: number) => {
@@ -112,6 +144,7 @@ export default function QuestionForm({
       ...prev,
       options: (prev.options || []).filter((_, i) => i !== index),
     }));
+    setOptionFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleOptionChange = (
@@ -127,6 +160,12 @@ export default function QuestionForm({
     }));
   };
 
+  // Handle image file input for option (convert to base64)
+  const handleOptionImageFile = async (index: number, file: File) => {
+    const base64 = await fileToBase64(file);
+    handleOptionChange(index, "image", base64);
+  };
+
   // Select correct answer for MCQ
   const handleSelectCorrectOption = (optionId: string) => {
     setFormData((prev) => ({
@@ -138,15 +177,7 @@ export default function QuestionForm({
     }));
   };
 
-  const handleAddAttachment = () => {
-    if (attachmentUrl.trim()) {
-      setFormData((prev) => ({
-        ...prev,
-        attachments: [...(prev.attachments || []), attachmentUrl],
-      }));
-      setAttachmentUrl("");
-    }
-  };
+  // Removed handleAddAttachment, file input is handled directly
 
   const handleRemoveAttachment = (index: number) => {
     setFormData((prev) => ({
@@ -172,7 +203,10 @@ export default function QuestionForm({
       setError("Please enter a question stem");
       return;
     }
-    if (formData.type === "MCQ" && (!formData.options || formData.options.length < 2)) {
+    if (
+      formData.type === "MCQ" &&
+      (!formData.options || formData.options.length < 2)
+    ) {
       setError("MCQ questions must have at least 2 options");
       return;
     }
@@ -221,7 +255,12 @@ export default function QuestionForm({
         <select
           name="section"
           value={formData.section as unknown as string}
-          onChange={e => setFormData(prev => ({ ...prev, section: e.target.value as unknown as Section }))}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              section: e.target.value as unknown as Section,
+            }))
+          }
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         >
@@ -270,20 +309,14 @@ export default function QuestionForm({
         </label>
         <div className="flex gap-2 mb-2">
           <input
-            type="url"
-            value={attachmentUrl}
-            onChange={(e) => setAttachmentUrl(e.target.value)}
-            placeholder="Enter image/document URL..."
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleAttachmentFile(file);
+            }}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button
-            type="button"
-            onClick={handleAddAttachment}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
         </div>
         <div className="space-y-2">
           {(formData.attachments || []).map((url, idx) => (
@@ -291,14 +324,11 @@ export default function QuestionForm({
               key={idx}
               className="flex items-center justify-between bg-gray-100 p-2 rounded-lg"
             >
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline truncate text-sm"
-              >
-                {url}
-              </a>
+              <img
+                src={url}
+                alt={`Attachment ${idx + 1}`}
+                className="max-h-32 rounded"
+              />
               <button
                 type="button"
                 onClick={() => handleRemoveAttachment(idx)}
@@ -331,14 +361,21 @@ export default function QuestionForm({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <input
-                    type="url"
-                    value={option.image || ""}
-                    onChange={(e) =>
-                      handleOptionChange(idx, "image", e.target.value)
-                    }
-                    placeholder="Option image URL (optional)"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleOptionImageFile(idx, file);
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
+                  {option.image && (
+                    <img
+                      src={option.image}
+                      alt={`Option ${idx + 1} image`}
+                      className="mt-2 max-h-32 rounded"
+                    />
+                  )}
                 </div>
                 <button
                   type="button"
@@ -372,11 +409,13 @@ export default function QuestionForm({
                     key={option.optionId}
                     type="button"
                     onClick={() => handleSelectCorrectOption(option.optionId)}
-                    className={`px-4 py-2 rounded-lg font-medium border transition-colors duration-150 ${formData.correctAnswer?.answer === option.optionId
-                      ? "bg-green-500 text-white border-green-600"
-                      : "bg-gray-200 text-gray-700 border-gray-300"}`}
+                    className={`px-4 py-2 rounded-lg font-medium border transition-colors duration-150 ${
+                      formData.correctAnswer?.answer === option.optionId
+                        ? "bg-green-500 text-white border-green-600"
+                        : "bg-gray-200 text-gray-700 border-gray-300"
+                    }`}
                   >
-                    { `Option ${idx + 1}`}
+                    {`Option ${idx + 1}`}
                   </button>
                 ))}
               </div>
@@ -456,44 +495,35 @@ export default function QuestionForm({
         />
         <div className="flex gap-2 mb-2">
           <input
-            type="url"
-            value={correctAttachmentUrl}
-            onChange={(e) => setCorrectAttachmentUrl(e.target.value)}
-            placeholder="Enter attachment URL..."
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleCorrectAttachmentFile(file);
+            }}
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          <button
-            type="button"
-            onClick={handleAddCorrectAttachment}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
-        </div>
-        <div className="space-y-2">
-          {(formData.correctAnswer?.attachments || []).map((url, idx) => (
-            <div
-              key={idx}
-              className="flex items-center justify-between bg-gray-100 p-2 rounded-lg"
-            >
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline truncate text-sm"
+          <div className="space-y-2">
+            {(formData.correctAnswer?.attachments || []).map((url, idx) => (
+              <div
+                key={idx}
+                className="flex items-center justify-between bg-gray-100 p-2 rounded-lg"
               >
-                {url}
-              </a>
-              <button
-                type="button"
-                onClick={() => handleRemoveCorrectAttachment(idx)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                <img
+                  src={url}
+                  alt={`Correct Attachment ${idx + 1}`}
+                  className="max-h-32 rounded"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveCorrectAttachment(idx)}
+                  className="text-red-500 hover:text-red-700"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -504,7 +534,11 @@ export default function QuestionForm({
           disabled={isLoading}
           className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
-          {isLoading ? "Saving..." : initialData ? "Update Question" : "Create Question"}
+          {isLoading
+            ? "Saving..."
+            : initialData
+            ? "Update Question"
+            : "Create Question"}
         </button>
       </div>
     </form>

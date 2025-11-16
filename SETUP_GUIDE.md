@@ -17,7 +17,6 @@
 - **Package Manager**: npm
 
 ---
-
 ## How CORS/Rewrite Works
 
 ### Development Mode
