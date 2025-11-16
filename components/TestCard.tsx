@@ -11,16 +11,19 @@ export default function TestCard({ test, attempt }: TestCardProps) {
   // const navigate = useNavigate();
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
     });
   };
 
   const isActive = () => {
     const now = new Date();
-    const start = new Date(Number(test.postedAt));
+    const start = new Date(Number(test.startAt));
     const end = new Date(Number(test.expireAt));
     return now >= start && now <= end && test.active;
   };
@@ -55,7 +58,7 @@ export default function TestCard({ test, attempt }: TestCardProps) {
             <Calendar className="w-4 h-4 text-blue-500" />
             <div>
               <p className="text-xs text-gray-500">Posted</p>
-              <p className="font-medium">{formatDate(new Date(Number(test.postedAt)))}</p>
+              <p className="font-medium">{formatDate(new Date(Number(test.startAt)))}</p>
             </div>
           </div>
           <div className="flex items-center space-x-2 text-gray-600 text-sm">

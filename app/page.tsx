@@ -49,7 +49,7 @@ export default function Home() {
     switch (activeTab) {
       case "active":
         filtered = tests.filter((test) => {
-          const start = new Date(Number(test.postedAt));
+          const start = new Date(Number(test.startAt));
           const end = new Date(Number(test.expireAt));
           return now >= start && now <= end && test.active;
         });

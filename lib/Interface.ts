@@ -31,7 +31,7 @@ export interface Test {
 
   // Timestamps (epoch ms)
   createdAt?: number;
-  postedAt?: number;
+  startAt?: number;
   expireAt?: number;
 }
 

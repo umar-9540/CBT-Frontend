@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Question } from "./Interface";
+import * as testApi from "./testApi";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 const QUESTIONS_ENDPOINT = `${API_BASE}/api/v1/questions`;
@@ -8,17 +9,11 @@ const QUESTIONS_ENDPOINT = `${API_BASE}/api/v1/questions`;
  * Fetch all questions with optional filtering by testId and section
  */
 export const getQuestions = async (
-  testId?: string,
-  section?: string
 ): Promise<Question[]> => {
   try {
-    const params = new URLSearchParams();
-    if (testId) params.append("testId", testId);
-    if (section) params.append("section", section);
-    
-    const query = params.toString() ? `?${params.toString()}` : "";
-    const res = await axios.get(`${QUESTIONS_ENDPOINT}${query}`);
-    
+
+    const res = await axios.get(`${QUESTIONS_ENDPOINT}`);
+
     if (res.status === 200) {
       return res.data || [];
     }
@@ -29,6 +24,25 @@ export const getQuestions = async (
   }
 };
 
+/**
+ * Fetch all questions with optional filtering by testId and section
+ */
+export const getQuestionsByTestId = async (
+  testId?: string,
+): Promise<Question[]> => {
+  try {
+
+    const res = await axios.get(`${QUESTIONS_ENDPOINT}/test/${testId}`);
+
+    if (res.status === 200) {
+      return res.data || [];
+    }
+    throw new Error(`Unexpected status: ${res.status}`);
+  } catch (error) {
+    console.error("Error fetching questions by test id:", error);
+    throw error;
+  }
+};
 /**
  * Fetch a single question by ID
  */
