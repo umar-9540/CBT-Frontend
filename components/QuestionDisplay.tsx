@@ -60,7 +60,7 @@ export default function QuestionDisplay({
               {question.section} • Question {questionPosition}
             </p>
             <h2 className="text-2xl font-bold text-gray-900">
-              Question {question.question_number}
+              Question 
             </h2>
           </div>
           <div className="text-right">
