@@ -16,7 +16,7 @@ export interface Test {
   description?: string;
 
   // Questions / sections
-  totalQuestions?: number | string;
+  totalQuestions?: number;
   sections?: Section[];
 
   // Scoring
@@ -92,8 +92,6 @@ export interface CorrectAnswer {
 
 export interface QuestionAttachment {
   url: string;
-  type: string;
-  description?: string;
 }
 
 export interface QuestionOption {

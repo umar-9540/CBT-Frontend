@@ -5,7 +5,7 @@ export const TEST = {
   totalMarks: 100,
 };
 
-export const SECTIONS = ["Physics", "Chemistry", "Mathematics", "Biology"];
+export const SECTIONS = ["PHYSICS", "CHEMISTRY", "MATHEMATICS", "BIOLOGY"];
 export const QUESTIONS_PER_SECTION = 25;
 
 export const QUESTIONS = [

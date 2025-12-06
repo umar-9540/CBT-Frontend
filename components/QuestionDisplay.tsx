@@ -1,29 +1,19 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  Question,
-  QuestionOption,
-  QuestionAttachment,
-  StudentAnswer,
-} from "../lib/Interface";
 import Image from "next/image";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Question, StudentAnswer } from "../lib/Interface";
 
-interface QuestionDisplayProps {
+interface Props {
   question: Question;
-  options: QuestionOption[];
-  attachments: QuestionAttachment[];
-  currentAnswer?: StudentAnswer;
-  onAnswerChange: (answerId: string | null, integerValue?: number) => void;
+  currentAnswer: StudentAnswer | undefined;
+  onAnswerChange: (selectedOptionId: string | null, integerAnswer?: number) => void;
   onPrevious: () => void;
   onNext: () => void;
   hasPrevious: boolean;
   hasNext: boolean;
   questionPosition: string;
 }
-
 export default function QuestionDisplay({
   question,
-  options,
-  attachments,
   currentAnswer,
   onAnswerChange,
   onPrevious,
@@ -31,148 +21,150 @@ export default function QuestionDisplay({
   hasPrevious,
   hasNext,
   questionPosition,
-}: QuestionDisplayProps) {
-  const handleIntegerChange = (value: string) => {
-    if (value === "") {
-      onAnswerChange(null, undefined);
-    } else {
-      const intValue = parseInt(value);
-      if (!isNaN(intValue)) {
-        onAnswerChange(null, intValue);
-      }
-    }
-  };
+}: Props) {
+  if (!question) return null;
 
-  const getSelectedAnswer = () => {
-    if (question.type === "MCQ") {
-      return currentAnswer?.selected_option_id || "";
-    } else {
-      return currentAnswer?.integer_answer?.toString() || "";
-    }
+  const {
+    stem,
+    section,
+    marks,
+    type,
+    options = [],
+    attachments = [],
+  } = question;
+
+  const normalizedAttachments = attachments.map(att =>
+    typeof att === "string" ? { url: att, type: "image" } : att
+  );
+
+  const selectedAnswer =
+    type === "MCQ"
+      ? currentAnswer?.selected_option_id || ""
+      : currentAnswer?.integer_answer?.toString() || "";
+
+  const handleIntegerChange = (value:any) => {
+    if (value === "") return onAnswerChange(null, undefined);
+    const intVal = parseInt(value);
+    if (!isNaN(intVal)) onAnswerChange(null, intVal);
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
+    <div className="h-full flex flex-col bg-white rounded-xl shadow">
+      {/* HEADER */}
+      <div className="border-b border-gray-200 px-6 py-4 bg-gray-50 rounded-t-xl">
+        <div className="flex justify-between items-center">
           <div>
-            <p className="text-sm text-gray-600 mb-1">
-              {question.section} • Question {questionPosition}
+            <p className="text-xs text-gray-500 tracking-wide">
+              {section} • Question {questionPosition}
             </p>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Question 
+            <h2 className="text-xl font-semibold text-gray-900 mt-1">
+              Question
             </h2>
           </div>
           <div className="text-right">
-            <p className="text-sm text-gray-600 mb-1">Marks</p>
-            <p className="text-2xl font-bold text-blue-600">{question.marks}</p>
+            <p className="text-xs text-gray-500">Marks</p>
+            <p className="text-3xl font-bold text-blue-600">{marks}</p>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="space-y-6">
-          <div>
-            <p className="text-lg font-semibold text-gray-900 leading-relaxed mb-4">
-              {question.stem}
+      {/* BODY */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Question text */}
+        <p className="text-lg font-semibold text-gray-900 leading-relaxed">
+          {stem}
+        </p>
+
+        {/* Attachments */}
+        {normalizedAttachments.length > 0 && (
+          <div className="space-y-3">
+            {normalizedAttachments.map((att) => (
+              <div key={att.url} className="rounded-lg overflow-hidden">
+                <Image
+                  src={att.url}
+                  alt="Question attachment"
+                  width={700}
+                  height={400}
+                  className="rounded-xl object-contain bg-gray-100 p-2"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Options / Integer box */}
+        {type === "MCQ" ? (
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-gray-700">
+              Select the correct option:
             </p>
 
-            {attachments.length > 0 && (
-              <div className="space-y-4 mb-6">
-                {attachments.map((attachment) => (
-                  <div
-                    key={attachment.url}
-                    className="bg-gray-50 rounded-lg overflow-hidden"
-                  >
-                    <Image
-                      src={attachment.url}
-                      alt="Question attachment"
-                      className="w-full h-auto max-h-96 object-contain"
-                    />
+            {options.map((op) => (
+              <label
+                key={op.optionId}
+                className={`block p-4 rounded-xl border transition-all cursor-pointer
+                  ${selectedAnswer === op.optionId
+                    ? "border-blue-600 bg-blue-50 shadow"
+                    : "border-gray-300 bg-white hover:border-blue-300"
+                  }
+                `}
+              >
+                <div className="flex items-start gap-3">
+                  <input
+                    type="radio"
+                    name={`q-${question.id}`}
+                    checked={selectedAnswer === op.optionId}
+                    onChange={() => onAnswerChange(op.optionId)}
+                    className="mt-1 w-5 h-5 text-blue-600 cursor-pointer"
+                  />
+                  <div>
+                    <p className="text-gray-900 font-medium">{op.text}</p>
+                    {op.image && (
+                      <img
+                        src={op.image}
+                        alt="Option"
+                        className="mt-2 h-32 rounded-lg"
+                      />
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              </label>
+            ))}
           </div>
-
-          {question.type === "MCQ" ? (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-700 mb-4">
-                Select the correct option:
-              </p>
-              {options.map((option) => (
-                <label
-                  key={option.optionId}
-                  className={`block p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    getSelectedAnswer() === option.optionId
-                      ? "border-blue-600 bg-blue-50"
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <input
-                      type="radio"
-                      name={`question-${question.id}`}
-                      value={option.optionId}
-                      checked={getSelectedAnswer() === option.optionId}
-                      onChange={(e) => onAnswerChange(e.target.value)}
-                      className="mt-1 w-5 h-5 text-blue-600 cursor-pointer"
-                    />
-                    {/* <div className="flex-1">
-                      {option.option_text && (
-                        <p className="text-gray-900 font-medium">
-                          {option.option_text}
-                        </p>
-                      )}
-                      {option.option_image && (
-                        <img
-                          src={option.option_image}
-                          alt={`Option ${option.order}`}
-                          className="mt-2 max-h-48 rounded-lg"
-                        />
-                      )}
-                    </div> */}
-                  </div>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-4">
-                Enter your answer:
-              </p>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="string"
-                  value={getSelectedAnswer()}
-                  onChange={(e) => handleIntegerChange(e.target.value)}
-                  placeholder="Enter your answer"
-                  className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-lg font-semibold"
-                />
-                {/* <span className="text-gray-600 font-medium">
-                  {question.tolerance > 0 && `(±${question.tolerance})`}
-                </span> */}
-              </div>
-            </div>
-          )}
-        </div>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-gray-700">
+              Enter your answer:
+            </p>
+            <input
+              value={selectedAnswer}
+              onChange={(e) => handleIntegerChange(e.target.value)}
+              placeholder="Enter value"
+              className="mt-2 w-full px-4 py-3 border rounded-xl text-lg shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+        )}
       </div>
 
-      <div className="bg-white border-t border-gray-200 p-6 flex gap-3">
+      {/* FOOTER BUTTONS */}
+      <div className="border-t border-gray-200 p-4 flex gap-3 bg-gray-50 rounded-b-xl">
         <button
           onClick={onPrevious}
           disabled={!hasPrevious}
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="flex items-center gap-2 px-4 py-2 border rounded-lg font-medium 
+          disabled:opacity-40 bg-white hover:bg-gray-100"
         >
           <ChevronLeft className="w-5 h-5" />
-          <span>Previous</span>
+          Previous
         </button>
+
         <button
           onClick={onNext}
           disabled={!hasNext}
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg border-2 border-gray-300 font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="flex items-center gap-2 px-4 py-2 border rounded-lg font-medium 
+          disabled:opacity-40 bg-white hover:bg-gray-100"
         >
-          <span>Next</span>
+          Next
           <ChevronRight className="w-5 h-5" />
         </button>
       </div>

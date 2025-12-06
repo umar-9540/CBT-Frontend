@@ -1,40 +1,37 @@
-import { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+"use client";
+import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+
+import { useEffect, useMemo, useState } from "react";
 import { LogOut, BookOpen } from "lucide-react";
-// import { useAuth } from "../contexts/AuthContext";
-import TestConfirmDialog from "../../../../components/TestConfirmDialog";
-import TestTimer from "../../../../components/TestTimer";
-import QuestionDisplay from "../../../../components/QuestionDisplay";
-import QuestionGrid from "../../../../components/QuestionGrid";
-import SubmitDialog from "../../../../components/SubmitDialog";
-import TestCompletedDialog from "../../../../components/TestCompletedDialog";
+import TestConfirmDialog from "./TestConfirmDialog";
+import TestTimer from "./TestTimer";
+import QuestionDisplay from "./QuestionDisplay";
+import QuestionGrid from "./QuestionGrid";
+import SubmitDialog from "./SubmitDialog";
+import TestCompletedDialog from "./TestCompletedDialog";
 
 import {
-  TEST,
-  QUESTIONS,
-  QUESTION_OPTIONS,
-  ATTACHMENTS,
+ 
   SECTIONS,
   QUESTIONS_PER_SECTION,
-} from "../../../../constants/TestData";
+} from "../constants/TestData";
+import { getQuestionsByTestId } from "../lib/questionApi";
+import { Question as BaseQuestion, StudentAnswer, Test } from "../lib/Interface";
+import { getTestById } from "@/lib/testApi";
 
-export default function TestPage() {
-  const navigate = useNavigate();
-  // const { testId } = useParams<{ testId: string }>();
+type Question = BaseQuestion & { question_number: number };
+
+export default function AttemptClient() {
+  const navigate = useRouter();
+  const searchParams = useSearchParams();
+  const testId = searchParams.get("testid");
   //   const { student } = useAuth();
 
-  const [test] = useState(TEST);
-  const [questions] = useState(QUESTIONS);
-  const [questionOptions] = useState(QUESTION_OPTIONS);
-  const [attachments] = useState(ATTACHMENTS);
+  const [test, setTest] = useState<Test>();
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  type StudentAnswer = {
-    question_id: string;
-    selected_option_id: string | null;
-    integer_answer?: number;
-    is_answered: boolean;
-    answered_at: string;
-  };
+
 
   const [studentAnswers, setStudentAnswers] = useState<{
     [key: string]: StudentAnswer;
@@ -48,8 +45,58 @@ export default function TestPage() {
     "submitted" | "timeout"
   >("submitted");
 
-  const [currentSection, setCurrentSection] = useState("Physics");
+  const [currentSection, setCurrentSection] = useState<(typeof SECTIONS)[number]>("PHYSICS");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  const sectionWiseQuestions = useMemo(() => {
+    const map: Record<string, Question[]> = {};
+
+    questions.forEach(q => {
+      if (!map[q.section]) {
+        map[q.section] = [];  // initialize if missing
+      }
+      map[q.section].push(q);
+    });
+
+    return map;
+  }, [questions]);
+
+
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      if (!testId) return;
+      setLoading(true);
+      try {
+        const data = await getQuestionsByTestId(testId);
+        // Assign question_number per section if not present
+        const questionsWithNumber: Question[] = [];
+
+        data.forEach((q: any, idx: number) => {
+          questionsWithNumber.push({ ...q, question_number: idx + 1 });
+        });
+
+        setQuestions(questionsWithNumber);
+        console.log("Fetched questions:", questionsWithNumber);
+      } catch (error) {
+        console.error("Failed to fetch questions:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const fetchTestDetails = async () => {
+      if (!testId) return;
+      setLoading(true);
+      try {
+        const data = await getTestById(testId);
+        setTest(data);
+        console.log("Fetched test details:", data);
+      } catch (err) {
+        console.error("Failed to fetch test details:", err);
+      }
+    };
+    fetchTestDetails();
+    fetchQuestions();
+  }, [testId]);
 
   const handleStartTest = () => {
     setTestStarted(true);
@@ -64,19 +111,24 @@ export default function TestPage() {
     const currentQuestion = getCurrentQuestion();
     if (!currentQuestion || !testStarted) return;
 
-    const updatedAnswer = {
-      question_id: currentQuestion.id,
+    const key = currentQuestion.questionId ?? currentQuestion.id;
+    if (!key) return;
+
+    const updatedAnswer: StudentAnswer = {
+      question_id: key,
       selected_option_id: selectedOptionId,
       integer_answer: integerValue,
-      is_answered: selectedOptionId !== null || integerValue !== undefined,
+      is_answered:
+        selectedOptionId !== null || integerValue !== undefined,
       answered_at: new Date().toISOString(),
     };
 
     setStudentAnswers((prev) => ({
       ...prev,
-      [currentQuestion.id]: updatedAnswer,
+      [key]: updatedAnswer,
     }));
   };
+
 
   const handleTimeUp = () => {
     handleSubmitTest();
@@ -91,11 +143,8 @@ export default function TestPage() {
   };
 
   const getCurrentQuestion = () => {
-    return questions.find(
-      (q) =>
-        q.section === currentSection &&
-        q.question_number === currentQuestionIndex + 1
-    );
+    const list = sectionWiseQuestions[currentSection];
+    return list ? list[currentQuestionIndex] : null;
   };
 
   const getQuestionPosition = () => {
@@ -108,23 +157,26 @@ export default function TestPage() {
   };
 
   const getQuestionIds = () => {
-    const result: { [key: string]: string[] } = {};
+    const result: Record<string, string[]> = {};
+
     SECTIONS.forEach((section) => {
       result[section] = questions
         .filter((q) => q.section === section)
         .sort((a, b) => a.question_number - b.question_number)
-        .map((q) => q.id);
+        .map((q) => q.id)
+        .filter((id): id is string => Boolean(id));  // <-- FIX
     });
+
     return result;
   };
 
-  // if (loading) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 flex items-center justify-center">
-  //       <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-  //     </div>
-  //   );
-  // }
+  if (loading) {
+    return (
+      <div className="min-h-screen from-gray-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+      </div>
+    );
+  }
 
   if (!test) {
     return (
@@ -136,14 +188,16 @@ export default function TestPage() {
 
   const currentQuestion = getCurrentQuestion();
 
+  console.log("Current Question:", currentQuestion);
+
   if (showConfirmDialog && !testStarted) {
     return (
       <TestConfirmDialog
-        testName={test.title}
-        duration={Math.ceil(test.duration / 60)}
-        totalQuestions={SECTIONS.length * QUESTIONS_PER_SECTION}
+        testName={test.testName || ""}
+        duration={Math.ceil((test.durationInMins || 60) / 60)}
+        totalQuestions={test.totalQuestions || 0}
         onConfirm={handleStartTest}
-        onCancel={() => navigate("/dashboard")}
+        onCancel={() => navigate.push("/dashboard")}
       />
     );
   }
@@ -157,19 +211,19 @@ export default function TestPage() {
               <BookOpen className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-gray-900">{test.title}</h1>
+              <h1 className="text-lg font-bold text-gray-900">{test.description}</h1>
               {/* <p className="text-sm text-gray-600">{student?.full_name}</p> */}
               <p className="text-sm text-gray-600">John</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             <TestTimer
-              durationMinutes={test.duration}
+              durationMinutes={test.durationInMins || 60}
               onTimeUp={handleTimeUp}
               isActive={testStarted}
             />
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate.push("/dashboard")}
               className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center space-x-2 transition-all"
             >
               <LogOut className="w-5 h-5" />
@@ -186,33 +240,42 @@ export default function TestPage() {
               {currentQuestion ? (
                 <QuestionDisplay
                   question={currentQuestion}
-                  options={questionOptions[currentQuestion.id] || []}
-                  attachments={attachments[currentQuestion.id] || []}
-                  currentAnswer={studentAnswers[currentQuestion.id]}
+                  currentAnswer={
+                    studentAnswers[
+                    currentQuestion.questionId ??
+                    currentQuestion.id ??
+                    ""
+                    ]
+                  }
                   onAnswerChange={handleAnswerChange}
                   onPrevious={() => {
                     if (currentQuestionIndex > 0) {
                       setCurrentQuestionIndex(currentQuestionIndex - 1);
-                    } else if (SECTIONS.indexOf(currentSection) > 0) {
-                      const prevSection =
-                        SECTIONS[SECTIONS.indexOf(currentSection) - 1];
-                      setCurrentSection(prevSection);
-                      setCurrentQuestionIndex(QUESTIONS_PER_SECTION - 1);
+                    } else {
+                      const currentSectionIdx = SECTIONS.indexOf(currentSection);
+                      if (currentSectionIdx > 0) {
+                        const prevSection = SECTIONS[currentSectionIdx - 1];
+                        const list = sectionWiseQuestions[prevSection];
+                        setCurrentSection(prevSection);
+                        setCurrentQuestionIndex(list.length - 1);
+                      }
                     }
                   }}
+
                   onNext={() => {
-                    if (currentQuestionIndex < QUESTIONS_PER_SECTION - 1) {
+                    const list = sectionWiseQuestions[currentSection];
+                    if (currentQuestionIndex < list.length - 1) {
                       setCurrentQuestionIndex(currentQuestionIndex + 1);
-                    } else if (
-                      SECTIONS.indexOf(currentSection) <
-                      SECTIONS.length - 1
-                    ) {
-                      const nextSection =
-                        SECTIONS[SECTIONS.indexOf(currentSection) + 1];
-                      setCurrentSection(nextSection);
-                      setCurrentQuestionIndex(0);
+                    } else {
+                      const currentSectionIdx = SECTIONS.indexOf(currentSection);
+                      if (currentSectionIdx < SECTIONS.length - 1) {
+                        const nextSection = SECTIONS[currentSectionIdx + 1];
+                        setCurrentSection(nextSection);
+                        setCurrentQuestionIndex(0);
+                      }
                     }
                   }}
+
                   hasPrevious={
                     currentQuestionIndex > 0 ||
                     SECTIONS.indexOf(currentSection) > 0
@@ -221,13 +284,14 @@ export default function TestPage() {
                     currentQuestionIndex < QUESTIONS_PER_SECTION - 1 ||
                     SECTIONS.indexOf(currentSection) < SECTIONS.length - 1
                   }
-                  questionPosition={`${getQuestionPosition()}/${
-                    SECTIONS.length * QUESTIONS_PER_SECTION
-                  }`}
+                  questionPosition={`${getQuestionPosition()}/${SECTIONS.length * QUESTIONS_PER_SECTION
+                    }`}
                 />
               ) : (
                 <div className="flex items-center justify-center h-96">
-                  <p className="text-gray-600">Loading question...</p>
+                  <p className="text-gray-600">
+                    Internal Server Error question...
+                  </p>
                 </div>
               )}
             </div>
@@ -245,11 +309,10 @@ export default function TestPage() {
                         setCurrentSection(section);
                         setCurrentQuestionIndex(0);
                       }}
-                      className={`py-2 px-3 rounded-lg font-semibold text-sm transition-all ${
-                        currentSection === section
-                          ? "bg-blue-600 text-white shadow-lg"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
+                      className={`py-2 px-3 rounded-lg font-semibold text-sm transition-all ${currentSection === section
+                        ? "bg-blue-600 text-white shadow-lg"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
                     >
                       {section.slice(0, 3)}
                     </button>
@@ -270,7 +333,7 @@ export default function TestPage() {
                 currentQuestionId={currentQuestion?.id || ""}
                 onQuestionSelect={(questionId) => {
                   const q = questions.find((que) => que.id === questionId);
-                  if (q) {
+                  if (q && typeof q.question_number === "number") {
                     setCurrentSection(q.section);
                     setCurrentQuestionIndex(q.question_number - 1);
                   }
@@ -308,7 +371,7 @@ export default function TestPage() {
           answeredCount={getAnsweredCount()}
           totalCount={SECTIONS.length * QUESTIONS_PER_SECTION}
           reason={completionReason}
-          onGoToDashboard={() => navigate("/dashboard")}
+          onGoToDashboard={() => navigate.push("/dashboard")}
         />
       )}
     </div>
