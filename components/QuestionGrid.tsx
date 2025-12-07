@@ -1,7 +1,8 @@
+import { Section } from "@/lib/Interface";
 import { CheckCircle2, Circle } from "lucide-react";
 
 interface QuestionGridProps {
-  sections: string[];
+  sections: Section[];
   questionsPerSection: number;
   answeredQuestions: Set<string>;
   currentQuestionId: string;
@@ -25,14 +26,14 @@ export default function QuestionGrid({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {sections.map((section) => (
-          <div key={section}>
+          <div key={section.name}>
             <h4 className="font-semibold text-gray-900 mb-2 text-sm uppercase tracking-wide">
-              {section}
+              {section.name}
             </h4>
             <div className="grid grid-cols-5 gap-2">
               {Array.from({ length: questionsPerSection }).map((_, index) => {
                 const qNum = index + 1;
-                const qId = questionIds[section]?.[index] || "";
+                const qId = questionIds[section.name]?.[index] || "";
                 const isAnswered = answeredQuestions.has(qId);
                 const isCurrent = currentQuestionId === qId;
 

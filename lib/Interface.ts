@@ -54,7 +54,7 @@ export interface Question {
   id?: string;
   questionId?: string;
   testId: string;
-  section: Section; // enum
+  section: string; // enum
   type: Type; // enum
   stem: string;
   attachments?: string[];
@@ -67,11 +67,11 @@ export interface Question {
   modifiedAt?: string;
 }
 
-export enum Section {
-  PHYSICS = "PHYSICS",
-  CHEMISTRY = "CHEMISTRY",
-  MATHS = "MATHS",
-  BIOLOGY = "BIOLOGY",
+export interface Section {
+  count: number,
+  integerType: number,
+  name: string,
+  mcqType: number
 }
 
 export enum Type {

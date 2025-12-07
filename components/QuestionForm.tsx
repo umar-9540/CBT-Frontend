@@ -37,7 +37,7 @@ export default function QuestionForm({
   const [formData, setFormData] = useState<Omit<Question, "id" | "questionId">>(
     initialData || {
       testId: "",
-      section: "PHYSICS" as unknown as Section,
+      section:  "Physics",
       type: "MCQ" as Type,
       stem: "",
       marks: 4,
@@ -258,7 +258,7 @@ export default function QuestionForm({
           onChange={(e) =>
             setFormData((prev) => ({
               ...prev,
-              section: e.target.value as unknown as Section,
+              section: e.target.value,
             }))
           }
           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"

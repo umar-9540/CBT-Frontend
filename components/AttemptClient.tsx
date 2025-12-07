@@ -12,12 +12,12 @@ import SubmitDialog from "./SubmitDialog";
 import TestCompletedDialog from "./TestCompletedDialog";
 
 import {
- 
+
   SECTIONS,
   QUESTIONS_PER_SECTION,
 } from "../constants/TestData";
 import { getQuestionsByTestId } from "../lib/questionApi";
-import { Question as BaseQuestion, StudentAnswer, Test } from "../lib/Interface";
+import { Question as BaseQuestion, Section, StudentAnswer, Test } from "../lib/Interface";
 import { getTestById } from "@/lib/testApi";
 
 type Question = BaseQuestion & { question_number: number };
@@ -27,7 +27,7 @@ export default function AttemptClient() {
   const searchParams = useSearchParams();
   const testId = searchParams.get("testid");
   //   const { student } = useAuth();
-
+  const [sections, setSections] = useState<Section[]>();
   const [test, setTest] = useState<Test>();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,7 @@ export default function AttemptClient() {
     "submitted" | "timeout"
   >("submitted");
 
-  const [currentSection, setCurrentSection] = useState<(typeof SECTIONS)[number]>("PHYSICS");
+  const [currentSection, setCurrentSection] = useState<string>("Physics");
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   const sectionWiseQuestions = useMemo(() => {
@@ -53,9 +53,9 @@ export default function AttemptClient() {
 
     questions.forEach(q => {
       if (!map[q.section]) {
-        map[q.section] = [];  // initialize if missing
+        map[q.section.toLowerCase()] = [];  // initialize if missing
       }
-      map[q.section].push(q);
+      map[q.section.toLowerCase()].push(q);
     });
 
     return map;
@@ -89,7 +89,9 @@ export default function AttemptClient() {
       try {
         const data = await getTestById(testId);
         setTest(data);
+        setSections(data.sections);
         console.log("Fetched test details:", data);
+        console.log("Fetched sections:", data.sections);
       } catch (err) {
         console.error("Failed to fetch test details:", err);
       }
@@ -143,15 +145,25 @@ export default function AttemptClient() {
   };
 
   const getCurrentQuestion = () => {
-    const list = sectionWiseQuestions[currentSection];
+    const list = sectionWiseQuestions[currentSection.toLowerCase()];
+    console.log("Section Wise Questions:", sectionWiseQuestions);
+    console.log("Current Section:", currentSection);
+    console.log("Current Section Questions:", list);
+    console.log("Current Question Index:", currentQuestionIndex);
     return list ? list[currentQuestionIndex] : null;
   };
 
   const getQuestionPosition = () => {
-    const sectionIndex = SECTIONS.indexOf(currentSection);
-    return sectionIndex * QUESTIONS_PER_SECTION + currentQuestionIndex + 1;
+
+    const sectionIndex = sections?.findIndex(s => s.name === currentSection);
+    if (sections === undefined || sectionIndex === undefined) return 0;
+    return sectionIndex * sections[sectionIndex]?.count + currentQuestionIndex + 1;
   };
 
+  const getSectionIndex = () => {
+    const sectionIndex = sections?.findIndex(s => s.name === currentSection);
+    return sectionIndex ?? -1;
+  }
   const getAnsweredCount = () => {
     return Object.values(studentAnswers).filter((a) => a.is_answered).length;
   };
@@ -159,14 +171,16 @@ export default function AttemptClient() {
   const getQuestionIds = () => {
     const result: Record<string, string[]> = {};
 
-    SECTIONS.forEach((section) => {
-      result[section] = questions
-        .filter((q) => q.section === section)
+    console.log("Sections for question IDs:", sections);
+    sections?.forEach((section) => {
+      result[section.name] = questions
+        .filter((q) => q.section.toLowerCase() === section.name.toLowerCase())
         .sort((a, b) => a.question_number - b.question_number)
         .map((q) => q.id)
-        .filter((id): id is string => Boolean(id));  // <-- FIX
+        .filter((id): id is string => Boolean(id));
     });
 
+    console.log("Question IDs by section:", result);
     return result;
   };
 
@@ -252,11 +266,11 @@ export default function AttemptClient() {
                     if (currentQuestionIndex > 0) {
                       setCurrentQuestionIndex(currentQuestionIndex - 1);
                     } else {
-                      const currentSectionIdx = SECTIONS.indexOf(currentSection);
+                      const currentSectionIdx = getSectionIndex();
                       if (currentSectionIdx > 0) {
-                        const prevSection = SECTIONS[currentSectionIdx - 1];
-                        const list = sectionWiseQuestions[prevSection];
-                        setCurrentSection(prevSection);
+                        const prevSection = sections && sections[currentSectionIdx - 1];
+                        const list = sectionWiseQuestions[prevSection?.name || ""];
+                        setCurrentSection(prevSection?.name || "");
                         setCurrentQuestionIndex(list.length - 1);
                       }
                     }
@@ -264,13 +278,13 @@ export default function AttemptClient() {
 
                   onNext={() => {
                     const list = sectionWiseQuestions[currentSection];
-                    if (currentQuestionIndex < list.length - 1) {
+                    if (list && currentQuestionIndex < list.length - 1) {
                       setCurrentQuestionIndex(currentQuestionIndex + 1);
                     } else {
-                      const currentSectionIdx = SECTIONS.indexOf(currentSection);
-                      if (currentSectionIdx < SECTIONS.length - 1) {
-                        const nextSection = SECTIONS[currentSectionIdx + 1];
-                        setCurrentSection(nextSection);
+                      const currentSectionIdx = getSectionIndex();
+                      if (sections && currentSectionIdx < sections.length - 1) {
+                        const nextSection = sections[currentSectionIdx + 1];
+                        setCurrentSection(nextSection.name);
                         setCurrentQuestionIndex(0);
                       }
                     }
@@ -278,13 +292,13 @@ export default function AttemptClient() {
 
                   hasPrevious={
                     currentQuestionIndex > 0 ||
-                    SECTIONS.indexOf(currentSection) > 0
+                    getSectionIndex() > 0
                   }
                   hasNext={
-                    currentQuestionIndex < QUESTIONS_PER_SECTION - 1 ||
-                    SECTIONS.indexOf(currentSection) < SECTIONS.length - 1
+                    currentQuestionIndex < (sections && sections[getSectionIndex()].count || 25) - 1 ||
+                    getSectionIndex() < (sections?.length || 1) - 1
                   }
-                  questionPosition={`${getQuestionPosition()}/${SECTIONS.length * QUESTIONS_PER_SECTION
+                  questionPosition={`${getQuestionPosition()}/${(sections?.length || 1) * (sections && sections[getSectionIndex()].count || 25)
                     }`}
                 />
               ) : (
@@ -299,30 +313,30 @@ export default function AttemptClient() {
 
           <div className="lg:col-span-1">
             <div className="space-y-4">
-              <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="bg-white rounded-lg shadow-md p-2">
                 <h3 className="font-bold text-gray-900 mb-3">Sections</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {SECTIONS.map((section) => (
+                  {sections && sections.map((section) => (
                     <button
-                      key={section}
+                      key={section.name}
                       onClick={() => {
-                        setCurrentSection(section);
+                        setCurrentSection(section.name);
                         setCurrentQuestionIndex(0);
                       }}
-                      className={`py-2 px-3 rounded-lg font-semibold text-sm transition-all ${currentSection === section
+                      className={`py-2 px-3 rounded-lg font-semibold text-sm transition-all ${currentSection === section.name
                         ? "bg-blue-600 text-white shadow-lg"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                     >
-                      {section.slice(0, 3)}
+                      {section.name.slice(0, 3)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <QuestionGrid
-                sections={SECTIONS}
-                questionsPerSection={QUESTIONS_PER_SECTION}
+                sections={sections || []}
+                questionsPerSection={sections && sections[getSectionIndex()]?.count || QUESTIONS_PER_SECTION}
                 answeredQuestions={
                   new Set(
                     Object.keys(studentAnswers).filter(
@@ -355,7 +369,7 @@ export default function AttemptClient() {
       {showSubmitDialog && (
         <SubmitDialog
           answeredCount={getAnsweredCount()}
-          totalCount={SECTIONS.length * QUESTIONS_PER_SECTION}
+          totalCount={(sections?.length || 3) * (sections && sections[0].count || 25)}
           onConfirm={async () => {
             await handleSubmitTest();
             setShowSubmitDialog(false);
@@ -369,7 +383,7 @@ export default function AttemptClient() {
       {showCompletedDialog && (
         <TestCompletedDialog
           answeredCount={getAnsweredCount()}
-          totalCount={SECTIONS.length * QUESTIONS_PER_SECTION}
+          totalCount={(sections?.length || 3) * (sections && sections[0].count || 25)}
           reason={completionReason}
           onGoToDashboard={() => navigate.push("/dashboard")}
         />
