@@ -70,18 +70,21 @@ export interface SubmissionPayload {
 }
 
 export interface SectionAnalysis {
-  section: string;
+  section: Section;
   totalQuestions: number;
   correctCount: number;
   wrongCount: number;
   unansweredCount: number;
   marksObtained: number;
   maxMarks: number;
+  accuracy?: number;
+  rank?: number;
+  percentile?: number;
 }
 
 export interface QuestionAnalysis {
   questionId: string;
-  section: string;
+  section: Section;
   type: string;
   stem: string;
   submittedValue: string;
